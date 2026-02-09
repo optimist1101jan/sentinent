@@ -6,6 +6,15 @@ A persistent conversational AI agent with **long-term memory**, **dynamic identi
 ![Gemini](https://img.shields.io/badge/Google%20Gemini-API-4285F4?logo=google&logoColor=white)
 ![FAISS](https://img.shields.io/badge/FAISS-Vector%20Search-orange)
 ![SQLite](https://img.shields.io/badge/SQLite-FTS5-003B57?logo=sqlite&logoColor=white)
+![Streaming](https://img.shields.io/badge/Real--Time-Streaming-FF69B4?logo=statuspage&logoColor=white)
+![Bifurcated Memory](https://img.shields.io/badge/Memory-Bifurcated%20System-9C27B0?logo=brainstore&logoColor=white)
+![Summarization](https://img.shields.io/badge/Auto--Summarization-Recursive-4CAF50?logo=element&logoColor=white)
+![Dynamic Lore](https://img.shields.io/badge/Dynamic%20Lore-Semantic%20Retrieval-FF9800?logo=knowledge-base&logoColor=white)
+![Proximity](https://img.shields.io/badge/Proximity-Nomic%20Embeddings-00A6ED?logo=radar&logoColor=white)
+![Temporal](https://img.shields.io/badge/Temporal%20Awareness-Context%20Drift-795548?logo=clockify&logoColor=white)
+![Traffic Control](https://img.shields.io/badge/Traffic%20Control-Hold--Wait--Commit-D32F2F?logo=traefik&logoColor=white)
+![Caching](https://img.shields.io/badge/Response%20Caching-Hash--Based-607D8B?logo=files&logoColor=white)
+
 
 ---
 
