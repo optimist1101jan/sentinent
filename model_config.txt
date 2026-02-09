@@ -1,0 +1,49 @@
+"""
+Model Configuration - Central place to configure LLM settings
+Change these values to switch models or adjust behavior
+"""
+
+# =============================================================================
+# MODEL SELECTION
+# =============================================================================
+
+# Model identifier - change this to use different models
+# Available models (Google AI Studio / Gemini API):
+#   - "gemma-3-1b-it"
+#   - "gemma-3-4b-it"  
+#   - "gemma-3-12b-it"
+#   - "gemma-3-27b-it"
+#   - "gemini-2.0-flash"
+#   - "gemini-2.0-flash-lite"
+#   - "gemini-2.5-flash"
+#   - "gemini-2.5-pro"
+MODEL = "gemini-2.5-flash-lite"
+
+# =============================================================================
+# GENERATION PARAMETERS
+# =============================================================================
+
+TEMPERATURE = 0.7
+MAX_OUTPUT_TOKENS = 1000
+
+# =============================================================================
+# API SETTINGS
+# =============================================================================
+
+API_KEY_PATH = "API_KEY.txt"
+API_VERSION = "v1beta"  # Options: "v1", "v1beta"
+
+# Request timeout in seconds
+TIMEOUT = 60
+
+# Number of retries on failure
+MAX_RETRIES = 3
+
+# =============================================================================
+# SYSTEM BEHAVIOR
+# =============================================================================
+
+FALLBACK_MESSAGE = "*AI looks at you, seemingly lost in a daydream, and doesn't respond.*"
+
+# Cache configuration
+CACHE_ENABLED = True

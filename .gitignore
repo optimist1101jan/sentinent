@@ -1,0 +1,36 @@
+# API Keys - NEVER commit
+API_KEY.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Embedding model (too large for git)
+data/nomic-embed-text-v1.5.Q8_0.gguf
+data/*.gguf
+
+# Runtime data
+data/logs_raw/
+data/buffer/
+agent/brain.db
+agent/semantic.index
+
+# Cache
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Misc
+.Rhistory
