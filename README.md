@@ -114,19 +114,21 @@ Turn == 5? → Summarize → Index to brain.db + FAISS → Reset buffer
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/persistent-character-agent.git
-cd persistent-character-agent
+git clone https://github.com/optimist1101jan/Persistent-AI-Systems-.git
+
+# Navigate to the project directory
+cd Persistent-AI-Systems-
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Add your API key
+# Add your API key (Creates API_KEY.txt)
 echo "API_KEY=your_gemini_api_key_here" > API_KEY.txt
 
-# Initialize project structure
+# Initialize database and project structure
 python setup.py
 
-# Start chatting
+# Start the agent
 python main.py
 ```
 
