@@ -53,7 +53,7 @@ def main():
             
             # Check for exit command BEFORE logging
             if user_input.strip().lower() in ["cls", "quit", "exit"]:
-                print("See you space cowboy...")
+                print("See you next time...")
                 break
             
             # === GUARD: Empty Input ===
