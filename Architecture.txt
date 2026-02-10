@@ -38,6 +38,7 @@ project/
 │
 ├── pipeline/               # Runtime processing
 │   ├── packet_builder.py   # Assemble XML-tagged prompt
+│   ├── renderer_base.py    # Shared API utilities (SOLID)
 │   ├── renderer.py         # Google Gemini API integration (non-streaming)
 │   ├── summarizer_builder.py   # 5-turn summarization + indexing
 │   ├── packet.md           # Current prompt
@@ -101,6 +102,7 @@ AGENT MODULE (agent/)
 
 PIPELINE MODULE (pipeline/)
   packet_builder.py   [OK] XML-tagged packet generation
+  renderer_base.py    [OK] Shared API utilities (clean, validate, payload)
   renderer.py         [OK] Google Gemini API integration with caching
   summarizer_builder.py [OK] 5-turn cycle summarization via Gemini API
 
