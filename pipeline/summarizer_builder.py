@@ -22,26 +22,12 @@ from agent.memory import MemoryStore
 from agent.semantic_search import add_chunk_to_index
 from model_config import (
     MODEL,
-    API_KEY_PATH,
     API_VERSION,
     TIMEOUT,
 )
 
-
-def _load_api_key():
-    """Load API key from API_KEY_PATH file."""
-    try:
-        api_key_full_path = os.path.join(BASE_DIR, API_KEY_PATH)
-        with open(api_key_full_path, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            if '=' in content:
-                return content.split('=', 1)[1].strip()
-            return content
-    except Exception:
-        return None
-
-
-API_KEY = _load_api_key()
+# Import shared API key loader (SOLID: Single Source of Truth)
+from pipeline.renderer_base import API_KEY
 TEMPERATURE = 0.3  # Lower temperature for factual summarization
 MAX_TOKENS = 256
 

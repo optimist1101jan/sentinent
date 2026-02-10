@@ -3,10 +3,11 @@ Streaming Renderer - streaming/renderer_streaming.py
 
 Handles streaming responses from Google Gemini API with typewriter effect.
 Yields tokens/chunks as they arrive for real-time display.
+
+Shared utilities (parsing, cleaning) imported from pipeline.renderer_base.
 """
 
 import os
-import re
 import json
 import sys
 import time
@@ -21,7 +22,6 @@ BASE_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.insert(0, BASE_DIR)
 from model_config import (
     MODEL,
-    API_KEY_PATH,
     TEMPERATURE,
     MAX_OUTPUT_TOKENS,
     TIMEOUT,
@@ -29,93 +29,12 @@ from model_config import (
     API_VERSION,
 )
 
-def _load_api_key():
-    """Load API key from API_KEY_PATH file."""
-    try:
-        api_key_full_path = os.path.join(BASE_DIR, API_KEY_PATH)
-        with open(api_key_full_path, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            if '=' in content:
-                return content.split('=', 1)[1].strip()
-            return content
-    except Exception:
-        pass
-    return None
-
-
-API_KEY = _load_api_key()
-
-
-# =============================================================================
-# CLEANING & VALIDATION
-# =============================================================================
-
-def clean_response(content: str) -> str:
-    """Clean and format the final response."""
-    # Remove [AI] prefixes if model added them
-    for prefix in ["[AI]:", "[AI],", "[AI]", "AI:"]:
-        if content.startswith(prefix):
-            content = content[len(prefix):].strip()
-    
-    # Strip leading punctuation artifacts
-    content = content.lstrip('.:,;- ').strip()
-    
-    return content
-
-
-# =============================================================================
-# PAYLOAD BUILDING
-# =============================================================================
-
-def parse_sections(packet: str) -> dict:
-    """Parse XML tags from packet."""
-    sections = {}
-    xml_pattern = r'<(system_directive|persona|lore|context|temporal_data|memory_bank|chat_history|user_input|trigger|distance_context)>(.*?)</\1>'
-    for match in re.finditer(xml_pattern, packet, re.DOTALL | re.IGNORECASE):
-        sections[match.group(1).lower()] = match.group(2).strip()
-    return sections
-
-
-def build_gemini_payload(packet: str) -> tuple[str, list]:
-    """Build Gemini API payload from XML-tagged packet."""
-    sections = parse_sections(packet)
-    
-    # Build system content
-    system_parts = []
-    if "system_directive" in sections:
-        system_parts.append(sections["system_directive"])
-    
-    context_parts = []
-    if "temporal_data" in sections:
-        context_parts.append(f"Time:\n{sections['temporal_data']}")
-    if "distance_context" in sections:
-        context_parts.append(f"Context:\n{sections['distance_context']}")
-    if "memory_bank" in sections:
-        context_parts.append(f"Memories:\n{sections['memory_bank']}")
-    if "chat_history" in sections:
-        context_parts.append(f"History:\n{sections['chat_history']}")
-    
-    if context_parts:
-        system_parts.append("\n".join(context_parts))
-    
-    system_parts.append("\nRespond as AI. Start with [AI]:")
-    system_content = '\n'.join(system_parts)
-    
-    # Build user message
-    user_content = sections.get("user_input", "")
-    if "trigger" in sections:
-        user_content += "\n\n" + sections["trigger"]
-    
-    combined_content = f"{system_content}\n\n{user_content}"
-    
-    contents = [
-        {
-            "role": "user",
-            "parts": [{"text": combined_content}]
-        }
-    ]
-    
-    return system_content, contents
+# Import shared utilities from renderer_base (SOLID: Single Source of Truth)
+from pipeline.renderer_base import (
+    API_KEY,
+    clean_response,
+    build_gemini_payload,
+)
 
 
 # =============================================================================

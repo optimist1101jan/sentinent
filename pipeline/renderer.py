@@ -1,10 +1,11 @@
 """
 Gemini API Renderer - Sends packets to Google Gemini/Gemma models.
-Handles prompt formatting, API calls, response processing, and local caching.
+Handles caching and synchronous API calls with retries.
+
+Shared utilities (parsing, cleaning, validation) imported from renderer_base.py.
 """
 
 import os
-import re
 import time
 import json
 import hashlib
@@ -20,7 +21,6 @@ BASE_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.insert(0, BASE_DIR)
 from model_config import (
     MODEL,
-    API_KEY_PATH,
     TEMPERATURE,
     MAX_OUTPUT_TOKENS,
     TIMEOUT,
@@ -30,30 +30,22 @@ from model_config import (
     API_VERSION,
 )
 
-# Cache directory
-CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "ai", "responses")
-
-def _load_api_key():
-    """Load API key from API_KEY_PATH file."""
-    try:
-        api_key_full_path = os.path.join(BASE_DIR, API_KEY_PATH)
-        with open(api_key_full_path, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            # Handle different formats (just key or KEY = value)
-            if '=' in content:
-                return content.split('=', 1)[1].strip()
-            return content
-    except Exception:
-        pass
-    return None
-
-
-API_KEY = _load_api_key()
+# Import shared utilities from renderer_base (SOLID: Single Source of Truth)
+from pipeline.renderer_base import (
+    API_KEY,
+    clean_response,
+    validate,
+    build_gemini_payload,
+)
 
 
 # =============================================================================
 # CACHING
 # =============================================================================
+
+# Cache directory
+CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache", "ai", "responses")
+
 
 def _get_cache_key(system_instruction: str, user_content: str) -> str:
     """Generate cache key from system instruction and user content."""
@@ -106,95 +98,8 @@ def clear_cache():
 
 
 # =============================================================================
-# CLEANING & VALIDATION
+# API CALL WITH RETRIES
 # =============================================================================
-
-def clean_response(content: str) -> str:
-    """Clean and format the final response."""
-    # Remove [AI] prefixes if model added them
-    for prefix in ["[AI]:", "[AI],", "[AI]", "AI:"]:
-        if content.startswith(prefix):
-            content = content[len(prefix):].strip()
-    
-    # Strip leading punctuation artifacts
-    content = content.lstrip('.:,;- ').strip()
-    
-    return content
-
-
-def validate(content: str) -> tuple[bool, str]:
-    """Check response is safe and valid."""
-    content = content.strip()
-    
-    if not content or len(content) < 2:
-        return False, "Too short"
-    
-    if content.startswith(("[User]:", "User:")) or "\n[User]:" in content:
-        return False, "User impersonation"
-    
-    return True, ""
-
-
-# =============================================================================
-# PAYLOAD BUILDING
-# =============================================================================
-
-def parse_sections(packet: str) -> dict:
-    """Parse XML tags from packet."""
-    sections = {}
-    xml_pattern = r'<(system_directive|persona|lore|context|temporal_data|memory_bank|chat_history|user_input|trigger|distance_context)>(.*?)</\1>'
-    for match in re.finditer(xml_pattern, packet, re.DOTALL | re.IGNORECASE):
-        sections[match.group(1).lower()] = match.group(2).strip()
-    return sections
-
-
-def build_gemini_payload(packet: str) -> tuple[str, list]:
-    """
-    Build Gemini API payload from XML-tagged packet.
-    
-    Returns:
-        Tuple of (system_content, contents_list)
-    """
-    sections = parse_sections(packet)
-    
-    # Build system content (will be combined with first user message for Gemma)
-    system_parts = []
-    if "system_directive" in sections:
-        system_parts.append(sections["system_directive"])
-    
-    context_parts = []
-    if "temporal_data" in sections:
-        context_parts.append(f"Time:\n{sections['temporal_data']}")
-    if "distance_context" in sections:
-        context_parts.append(f"Context:\n{sections['distance_context']}")
-    if "memory_bank" in sections:
-        context_parts.append(f"Memories:\n{sections['memory_bank']}")
-    if "chat_history" in sections:
-        context_parts.append(f"History:\n{sections['chat_history']}")
-    
-    if context_parts:
-        system_parts.append("\n".join(context_parts))
-    
-    system_parts.append("\nRespond as AI. Start with [AI]:")
-    system_content = '\n'.join(system_parts)
-    
-    # Build user message
-    user_content = sections.get("user_input", "")
-    if "trigger" in sections:
-        user_content += "\n\n" + sections["trigger"]
-    
-    # For Gemma models, combine system with user content
-    combined_content = f"{system_content}\n\n{user_content}"
-    
-    contents = [
-        {
-            "role": "user",
-            "parts": [{"text": combined_content}]
-        }
-    ]
-    
-    return system_content, contents
-
 
 def get_response(system_content: str, contents: list) -> str:
     """Send to Gemini API with retries."""
@@ -215,8 +120,6 @@ def get_response(system_content: str, contents: list) -> str:
     }
     
     for attempt in range(1, MAX_RETRIES + 1):
-        #print(f"   >> Attempt {attempt}/{MAX_RETRIES}...")
-        
         try:
             response = requests.post(
                 url=url,
@@ -247,16 +150,8 @@ def get_response(system_content: str, contents: list) -> str:
                 time.sleep(0.5 * attempt)
                 continue
             
-            # Log raw response preview
-            debug_preview = raw_content[:150].replace('\n', ' | ')
-            #print(f"   [Raw] {debug_preview}...")
-            
             # Clean the response
             content = clean_response(raw_content)
-            
-            # Log cleaned response preview
-            cleaned_preview = content[:80].replace('\n', ' | ') if content else "(empty)"
-            #print(f"   [Response] {cleaned_preview}...")
             
             # Validate
             is_valid, reason = validate(content)
@@ -282,6 +177,10 @@ def get_response(system_content: str, contents: list) -> str:
     return FALLBACK_MESSAGE
 
 
+# =============================================================================
+# MAIN ENTRY POINT
+# =============================================================================
+
 def render(packet: str) -> str:
     """Main entry point."""
     system_content, contents = build_gemini_payload(packet)
@@ -295,7 +194,6 @@ def render(packet: str) -> str:
         return cached
     
     # Make API call
-    # print(f"   >> Sending to {MODEL} (Gemini API)...")
     response = get_response(system_content, contents)
     
     # Cache successful responses
