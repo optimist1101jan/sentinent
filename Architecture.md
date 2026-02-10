@@ -88,7 +88,7 @@ graph TD
     GeminiAPI[Google Gemini API: gemma-3-12b-it] --> StreamResponse[Stream Response: streaming/renderer_streaming.py]
     
     StreamResponse --> Typewriter[Typewriter effect: 15ms/char]
-    Typewriter --> StripPrefix[Strip '[AI]:' prefix]
+    Typewriter --> StripPrefix["Strip '[AI]:' prefix"]
     StripPrefix --> Display[Real-time display]
     
     Display --> Validate{Valid response?}
