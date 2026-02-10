@@ -204,7 +204,7 @@ classDiagram
 
 ---
 
-## 3. Design Patterns — Current vs Recommended
+## 3. Design Patterns — Before vs Now
 
 ### 3.1 Currently Used
 
@@ -215,7 +215,7 @@ classDiagram
 | **Lazy Initialization** | `_get_llama()` global function | ✅ Good — defers expensive model load |
 | **Template Method** | `build_summarizer_packet()` | ✅ Good — fixed structure, variable data |
 
-### 3.2 Proposed Refactoring (Before → After)
+### 3.2 Proposed Refactoring (Before → Now)
 
 ```mermaid
 graph TB
@@ -248,7 +248,7 @@ graph TB
     class BASE base
 ```
 
-| # | Pattern | Where to Apply | Benefit |
+| # | Pattern | Applied Here | Benefit |
 |---|---|---|---|
 | 1 | **Strategy** | Swap `SyncRenderer` / `StreamingRenderer` via common interface | Eliminates code duplication |
 | 2 | **Observer** | `stream_response()` emits events on chunk arrival | Decouples streaming from display logic |
