@@ -9,9 +9,5 @@ llama-cpp-python>=0.3.0
 faiss-cpu>=1.7.4
 numpy>=1.21.0
 
-# Web Server (for UI integration)
-flask>=2.3.0
-flask-cors>=4.0.0
-
 # Note: If you have a GPU, use faiss-gpu instead of faiss-cpu:
 # faiss-gpu>=1.7.4
