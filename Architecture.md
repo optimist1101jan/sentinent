@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # PERSISTENT CHARACTER AGENT
 
 A persistent conversational AI with memory, identity, and time awareness.
@@ -9,19 +8,6 @@ Powered by Google Gemini API (`gemma-3-12b-it`) with real-time streaming respons
 ## FILE STRUCTURE
 
 ```text
-=======
-================================================================================
-PERSISTENT CHARACTER AGENT
-================================================================================
-
-A persistent conversational AI with memory, identity, and time awareness.
-Powered by Google Gemini API (gemma-3-12b-it) with real-time streaming responses.
-
---------------------------------------------------------------------------------
-FILE STRUCTURE
---------------------------------------------------------------------------------
-
->>>>>>> f95d4707ae189793f7aa5406801363346329f5b6
 project/
 ├── main.py                 # Entry point (CLI loop, 5-turn cycles, streaming)
 ├── setup.py                # Initialize dirs, lore files, load episodes
@@ -78,7 +64,6 @@ project/
     ├── nomic-embed-text-v1.5.Q8_0.gguf   # Embedding model (GGUF)
     ├── logs_raw/           # Conversation history - session-based files
     └── buffer/             # Session buffer backups
-<<<<<<< HEAD
 ```
 
 ---
@@ -150,68 +135,6 @@ graph TD
 ## PACKET FORMAT (XML)
 
 ```xml
-=======
-
---------------------------------------------------------------------------------
-DATA FLOW
---------------------------------------------------------------------------------
-
-User Input → HOLD (temp RAM, not logged)
-    ↓
-Build Packet (pipeline/packet_builder.py) - XML format
-    - Proximity state changed? → Inject from proximity/proximity_manager.py
-    - Memory intent detected? → Fetch from memory/memory_loader.py
-    ↓
-Send to Google Gemini API (gemma-3-12b-it)
-    ↓
-Stream Response (streaming/renderer_streaming.py)
-    - Typewriter effect: 15ms per character
-    - Prefix "[AI]:" stripped during streaming
-    - Real-time display as chunks arrive
-    ↓
-Validate → Check response validity
-    ↓
-Valid? → COMMIT (log both messages, increment counter)
-Invalid? → DISCARD (nothing saved, retry)
-    ↓
-Turn == 5? → Summarize → Index to brain.db + FAISS → Reset
-
---------------------------------------------------------------------------------
-COMPONENT VERIFICATION
---------------------------------------------------------------------------------
-
-AGENT MODULE (agent/)
-  temporal.py         [OK] TimeManager - time delta calculation
-  memory.py           [OK] MemoryStore - SQLite FTS5 storage
-  semantic_search.py  [OK] FAISS vector search (nomic-embed-text-v1.5, 768-dim)
-  conversation.py     [OK] Session-based logging (convo_YYYY-MM-DD_HH-MM-SS.txt)
-
-PIPELINE MODULE (pipeline/)
-  packet_builder.py   [OK] XML-tagged packet generation
-  renderer_base.py    [OK] Shared API utilities (clean, validate, payload)
-  renderer.py         [OK] Google Gemini API integration with caching
-  summarizer_builder.py [OK] 5-turn cycle summarization via Gemini API
-
-MEMORY MODULE (memory/)
-  memory_loader.py    [OK] Intent detection + fetching from episodic/semantic
-
-STREAMING MODULE (streaming/)
-  renderer_streaming.py [OK] Real-time streaming with typewriter effect
-
-PROXIMITY MODULE (proximity/)
-  proximity_manager.py  [OK] Nomic-based state detection (PHYSICAL/REMOTE/TRANSITION)
-
-MAIN MODULE (main.py)
-  Traffic Control     [OK] Hold-Wait-Commit pattern
-  Session Init        [OK] New session file per run
-  5-Turn Cycle        [OK] Auto-summarize after 5 turns
-  Streaming Display   [OK] Character-by-character typewriter effect
-
---------------------------------------------------------------------------------
-PACKET FORMAT (XML)
---------------------------------------------------------------------------------
-
->>>>>>> f95d4707ae189793f7aa5406801363346329f5b6
 <system_directive>
   Roleplay as AI...
   <persona>Name, relationship, identity, traits</persona>
@@ -230,7 +153,6 @@ PACKET FORMAT (XML)
 <mood>Current emotional state</mood>
 
 <trigger>Execution command for response generation</trigger>
-<<<<<<< HEAD
 ```
 
 ---
@@ -335,112 +257,11 @@ When the user asks a memory-related question (e.g., *"do you remember..."*), the
 **Session File:** `convo_YYYY-MM-DD_HH-MM-SS.txt`
 
 ```text
-=======
-
---------------------------------------------------------------------------------
-RENDERER (pipeline/renderer.py)
---------------------------------------------------------------------------------
-
-Google Gemini API implementation for Gemma models (non-streaming fallback).
-
-Process:
-  1. Parse XML sections → Build Gemini API payload
-  2. Check cache first (deduplication)
-  3. Send with retry logic (max 3 attempts)
-  4. Clean: Strip [AI] prefixes, punctuation artifacts
-  5. Validate: Check for impersonation, empty responses
-  6. Cache successful responses
-  7. Return cleaned text or fallback
-
---------------------------------------------------------------------------------
-STREAMING RENDERER (streaming/renderer_streaming.py)
---------------------------------------------------------------------------------
-
-Real-time streaming implementation with typewriter effect.
-
-Process:
-  1. Parse XML sections → Build Gemini API payload
-  2. Send streaming request (streamGenerateContent endpoint)
-  3. Collect all chunks → Detect prefix to strip
-  4. Print with typewriter delay (15ms per char)
-  5. Return cleaned full response
-
-API Config:
-  Model:           gemma-3-12b-it
-  API:             Google Gemini API (v1beta)
-  Endpoint:        streamGenerateContent
-  Temperature:     0.7
-  Max Tokens:      1000
-  Timeout:         60s
-  Char Delay:      0.015s (15ms) - typewriter effect
-
-Fallback: "*AI looks at you, seemingly lost in thought, and doesn't respond.*"
-
---------------------------------------------------------------------------------
-MEMORY SYSTEM
---------------------------------------------------------------------------------
-
-Loader:              memory/memory_loader.py - Intent detection + fetching
-Semantic (FAISS):    nomic-embed-text-v1.5.Q8_0.gguf (llama-cpp-python)
-                     768-dim embeddings, cosine similarity, top 5
-Episodic (SQLite):   FTS5 keyword search, top 3
-
-Memory Intent Detection:
-  - Detected by keywords: "remember", "do you recall", "what did we talk about"
-  - Only fetched when intent detected (saves tokens)
-  - Fetched from memory/memory_loader.py when needed
-
-Memory Sources:
-  - lore/*.md         Static personality files
-  - brain.db          Episode storage (SQLite)
-  - memory/semantic/  Compressed memory summaries
-
---------------------------------------------------------------------------------
-PROXIMITY SYSTEM
---------------------------------------------------------------------------------
-
-Manager:             proximity/proximity_manager.py - State detection + injection
-Embedding Model:     nomic-embed-text-v1.5.Q8_0.gguf (shared with semantic search)
-
-States:
-  PHYSICAL:          User is physically present, sitting together
-  REMOTE:            User is chatting remotely (text, phone, discord)
-  TRANSITION_AWAY:   User is leaving, saying goodbye
-  TRANSITION_TOWARD: User is arriving, coming closer
-
-Injection Logic:
-  - First turn:      ALWAYS inject proximity context
-  - State changed:   Inject new context
-  - No change:       Block disappears from packet (saves tokens)
-
-Detection:
-  - Cosine similarity between user input and anchor embeddings
-  - Confidence threshold: 0.45
-  - Transitions map to final states (AWAY→REMOTE, TOWARD→PHYSICAL)
-
---------------------------------------------------------------------------------
-TRAFFIC CONTROL
---------------------------------------------------------------------------------
-
-Hold-Wait-Commit:
-  HOLD:   Don't log user input immediately
-  WAIT:   Get AI response → Clean → Validate
-  COMMIT: Only save if valid (both messages together)
-  DISCARD: If invalid, nothing saved (clean retry)
-
---------------------------------------------------------------------------------
-LOGGING FORMAT
---------------------------------------------------------------------------------
-
-Session File: convo_YYYY-MM-DD_HH-MM-SS.txt
-
->>>>>>> f95d4707ae189793f7aa5406801363346329f5b6
 # Conversation Session Started: 2026-02-06T11:30:45
 #======================================================================
 
 [11:30:52] user: Hello
 [11:30:58] assistant: Hello! How can I help you today?
-<<<<<<< HEAD
 ```
 
 - New file created for each conversation session.
@@ -488,46 +309,3 @@ python manage_memory.py clear         # Clear all memories
 - **Output Format:** XML-tagged packet
 - **Log Format:** Session-based (`convo_YYYY-MM-DD_HH-MM-SS.txt`)
 - **Cache Location:** `~/.cache/ai/responses/`
-=======
-
-New file created for each conversation session.
-Buffer Directory: data/buffer/ (session backup)
-
---------------------------------------------------------------------------------
-USAGE
---------------------------------------------------------------------------------
-
-Setup:
-  python setup.py                       # Initialize project
-
-Chat:
-  python main.py                        # Run chat loop (streaming enabled)
-
-Memory Management:
-  python manage_memory.py list          # View all memories
-  python manage_memory.py delete <id>   # Delete memory
-  python manage_memory.py stats         # Show statistics
-  python manage_memory.py rebuild       # Rebuild FAISS index
-  python manage_memory.py clear         # Clear all memories
-
---------------------------------------------------------------------------------
-SPECS
---------------------------------------------------------------------------------
-
-Model:              gemma-3-12b-it
-API:                Google Gemini API (v1beta)
-Streaming:          Enabled (streaming/renderer_streaming.py)
-Typewriter Effect:  15ms per character
-Temperature:        0.7
-Max Tokens:         1000
-Timeout:            60s
-Max Retries:        3
-Embedding:          nomic-embed-text-v1.5.Q8_0.gguf (768-dim)
-Embedding Library:  llama-cpp-python
-Vector Index:       FAISS IndexFlatIP
-Turn Cycle:         5 turns → summarize → index
-Output Format:      XML-tagged packet
-Log Format:         Session-based (convo_YYYY-MM-DD_HH-MM-SS.txt)
-Cache Location:     ~/.cache/ai/responses/
-
->>>>>>> f95d4707ae189793f7aa5406801363346329f5b6
