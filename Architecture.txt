@@ -187,20 +187,24 @@ Fallback: "*AI looks at you, seemingly lost in thought, and doesn't respond.*"
 MEMORY SYSTEM
 --------------------------------------------------------------------------------
 
-Loader:              memory/memory_loader.py - Intent detection + fetching
-Semantic (FAISS):    nomic-embed-text-v1.5.Q8_0.gguf (llama-cpp-python)
-                     768-dim embeddings, cosine similarity, top 5
-Episodic (SQLite):   FTS5 keyword search, top 3
+The agent uses a **3-stage memory pipeline**:
 
-Memory Intent Detection:
-  - Detected by keywords: "remember", "do you recall", "what did we talk about"
-  - Only fetched when intent detected (saves tokens)
-  - Fetched from memory/memory_loader.py when needed
+### Stage 1 — Session Buffer
+Raw conversation turns held in-memory for the current 5-turn cycle.
 
-Memory Sources:
-  - lore/*.md         Static personality files
-  - brain.db          Episode storage (SQLite)
-  - memory/semantic/  Compressed memory summaries
+### Stage 2 — Summarization
+After 5 turns, the buffer is sent to Gemini for compression into a single factual sentence.
+
+### Stage 3 — Long-Term Indexing
+The compressed memory is simultaneously indexed into:
+- **Episodic Store** (SQLite FTS5) — keyword searchable
+- **Semantic Index** (FAISS) — embedding-based similarity search
+
+### Memory Retrieval
+When the user asks a memory-related question (e.g., *"do you remember..."*), the system:
+1. Detects memory intent via keyword patterns
+2. Searches both episodic and semantic stores
+3. Injects relevant memories into the prompt
 
 --------------------------------------------------------------------------------
 PROXIMITY SYSTEM
