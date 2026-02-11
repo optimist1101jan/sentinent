@@ -36,6 +36,9 @@ from pipeline.renderer_base import (
     build_gemini_payload,
 )
 
+from logger_config import get_logger
+logger = get_logger(__name__)
+
 
 # =============================================================================
 # STREAMING RESPONSE
@@ -53,11 +56,13 @@ def stream_response(packet: str):
         String chunks as they arrive from the API
     """
     if not API_KEY:
+        logger.error("API key not found - Cannot make streaming request")
         print("   [Error] API key not found")
         yield FALLBACK_MESSAGE
         return
     
     system_content, contents = build_gemini_payload(packet)
+    logger.info(f"Streaming API call started - Model: {MODEL}")
     
     # Use streaming endpoint
     url = f"https://generativelanguage.googleapis.com/{API_VERSION}/models/{MODEL}:streamGenerateContent?key={API_KEY}"
@@ -116,22 +121,27 @@ def stream_response(packet: str):
                             yield text
                             
         except json.JSONDecodeError as e:
+            logger.error(f"JSON parse failure - {e}")
             print(f"   [Error] Failed to parse response: {e}")
             yield FALLBACK_MESSAGE
             return
                         
     except requests.exceptions.HTTPError as e:
-        error_msg = f"[Error: HTTP {e.response.status_code if e.response else 'unknown'}]"
+        status = e.response.status_code if e.response else 'unknown'
+        logger.error(f"HTTP error - Status: {status} - Model: {MODEL}")
+        error_msg = f"[Error: HTTP {status}]"
         print(f"   [Error] {error_msg}")
         yield FALLBACK_MESSAGE
         return
     except Exception as e:
+        logger.error(f"Streaming error - {type(e).__name__}: {e}", exc_info=True)
         print(f"   [Error] {type(e).__name__}: {e}")
         yield FALLBACK_MESSAGE
         return
     
     # If no response received
     if not collected_texts:
+        logger.warning("Empty response - No text chunks received from API")
         yield FALLBACK_MESSAGE
 
 

@@ -28,6 +28,10 @@ from model_config import (
 
 # Import shared API key loader (SOLID: Single Source of Truth)
 from pipeline.renderer_base import API_KEY
+
+from logger_config import get_logger
+logger = get_logger(__name__)
+
 TEMPERATURE = 0.3  # Lower temperature for factual summarization
 MAX_TOKENS = 256
 
@@ -88,6 +92,7 @@ def summarize_with_llm(raw_conversation_text: str) -> str:
         compressed_memory: The 1-sentence summary for long-term storage
     """
     if not API_KEY:
+        logger.error("API key not found - Cannot summarize")
         return "[Error: API key not found]"
     
     url = f"https://generativelanguage.googleapis.com/{API_VERSION}/models/{MODEL}:generateContent?key={API_KEY}"
@@ -116,6 +121,7 @@ def summarize_with_llm(raw_conversation_text: str) -> str:
     }
     
     try:
+        logger.info(f"Summarization started - Model: {MODEL} - Input: {len(raw_conversation_text)} chars")
         print(f"   >> Sending to Gemini for summarization ({MODEL})...")
         response = requests.post(
             url=url,
@@ -135,13 +141,16 @@ def summarize_with_llm(raw_conversation_text: str) -> str:
                 content = parts[0].get('text', '').strip()
                 # Ensure it's a single sentence (basic cleanup)
                 content = content.replace("\n", " ").strip()
+                logger.info(f"Summarization success - Output: \"{content[:100]}\"")
                 return content
         
         return "[Error: No summary generated]"
             
     except requests.exceptions.ConnectionError:
+        logger.error("Summarization failed - Cannot connect to Gemini API")
         return "[Error: Cannot connect to Gemini API for summarization]"
     except requests.exceptions.Timeout:
+        logger.error(f"Summarization failed - Request timed out ({TIMEOUT}s)")
         return "[Error: Summarization request timed out]"
     except requests.exceptions.HTTPError as e:
         error_msg = str(e)
@@ -153,6 +162,7 @@ def summarize_with_llm(raw_conversation_text: str) -> str:
                 pass
         return f"[Error: {error_msg}]"
     except Exception as e:
+        logger.error(f"Summarization failed - {type(e).__name__}: {e}", exc_info=True)
         return f"[Error during summarization: {str(e)}]"
 
 
@@ -176,16 +186,20 @@ def index_compressed_memory(compressed_memory: str, cycle_num: int = 0):
         rowid = memory_store.add_episode(compressed_memory, source=source)
         memory_store.close()
         print(f"   >> [Episodic] Added to brain.db (rowid: {rowid})")
+        logger.info(f"Episodic index success - brain.db rowid: {rowid} - Source: {source}")
         results["episodic"] = True
     except Exception as e:
+        logger.error(f"Episodic index failed - {e}")
         print(f"   >> [Episodic] Error: {e}")
     
     # 2. Add to semantic memory (FAISS index)
     try:
         add_chunk_to_index(compressed_memory, source=f"summarizer/cycle_{cycle_num:03d}")
         print(f"   >> [Semantic] Added to FAISS index")
+        logger.info(f"Semantic index success - FAISS chunk added - Cycle: {cycle_num}")
         results["semantic"] = True
     except Exception as e:
+        logger.error(f"Semantic index failed - {e}")
         print(f"   >> [Semantic] Error: {e}")
     
     return results
@@ -221,6 +235,7 @@ def run_summarizer_pipeline(raw_conversation_text: str, save_packet: bool = True
         print("   >> Indexing compressed memory...")
         index_compressed_memory(compressed_memory, cycle_num=cycle_num)
     else:
+        logger.warning(f"Indexing skipped - Response was error/empty: \"{compressed_memory[:60] if compressed_memory else 'None'}\"")
         print("   >> [Indexing] Skipped due to empty/error response")
         if not compressed_memory:
             print("   >> [Warning] LLM returned empty summary")

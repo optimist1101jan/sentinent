@@ -31,6 +31,9 @@ agent/lore_index/chunks.json
 # Timestamps (runtime)
 agent/timestamps.json
 
+# System Logs (runtime)
+system_logs/Log_Files.md
+
 # Generated packets (runtime)
 pipeline/packet.md
 pipeline/summarizer.md

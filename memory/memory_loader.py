@@ -17,6 +17,9 @@ sys.path.insert(0, BASE_DIR)
 from agent.memory import MemoryStore
 from agent.semantic_search import search as semantic_search
 
+from logger_config import get_logger
+logger = get_logger(__name__)
+
 
 class MemoryLoader:
     """Handles memory retrieval based on user intent."""
@@ -47,6 +50,7 @@ class MemoryLoader:
         
         for pattern in memory_indicators:
             if re.search(pattern, text):
+                logger.debug(f"Memory intent detected - Pattern: {pattern} - Input: \"{text[:60]}\"")
                 return True
         
         return False
@@ -107,6 +111,7 @@ class MemoryLoader:
         
         # Format as bullet points
         memories_block = self.format_memories(relevant_memories)
+        logger.info(f"Memory retrieval success - Found {len(relevant_memories)} memories (episodic: {len(episodes) if episodes else 0}, semantic: {len(semantic_results) if semantic_results else 0})")
         
         return f"""<memory_bank>
 Use from this memory block only if required.
@@ -128,6 +133,7 @@ Use from this memory block only if required.
         if not self.is_memory_intent(user_input):
             return ""
         
+        logger.info(f"Fetching memories for: \"{user_input[:60]}\"")
         return self.fetch_memories(user_input)
     
     def close(self):

@@ -38,6 +38,9 @@ from pipeline.renderer_base import (
     build_gemini_payload,
 )
 
+from logger_config import get_logger
+logger = get_logger(__name__)
+
 
 # =============================================================================
 # CACHING
@@ -64,6 +67,7 @@ def get_cached_response(system_instruction: str, user_content: str) -> str | Non
             with open(cache_path, "r", encoding="utf-8") as f:
                 cache_data = json.load(f)
                 print(f"   [Cache] Hit")
+                logger.debug(f"Cache hit")
                 return cache_data.get("response")
         except Exception:
             return None
@@ -104,6 +108,7 @@ def clear_cache():
 def get_response(system_content: str, contents: list) -> str:
     """Send to Gemini API with retries."""
     if not API_KEY:
+        logger.error("API key not found - Cannot make sync request")
         print("   [Error] API key not found")
         return FALLBACK_MESSAGE
     
@@ -121,6 +126,7 @@ def get_response(system_content: str, contents: list) -> str:
     
     for attempt in range(1, MAX_RETRIES + 1):
         try:
+            logger.info(f"API call attempt {attempt}/{MAX_RETRIES} - Model: {MODEL}")
             response = requests.post(
                 url=url,
                 headers=headers,
@@ -133,6 +139,7 @@ def get_response(system_content: str, contents: list) -> str:
             # Extract text from Gemini response format
             candidates = result.get('candidates', [])
             if not candidates:
+                logger.warning(f"No candidates in response - Attempt {attempt}/{MAX_RETRIES}")
                 print("   [Warn] No candidates in response")
                 time.sleep(0.5 * attempt)
                 continue
@@ -146,6 +153,7 @@ def get_response(system_content: str, contents: list) -> str:
             raw_content = parts[0].get('text', '').strip()
             
             if not raw_content:
+                logger.warning(f"Empty response from API - Attempt {attempt}/{MAX_RETRIES}")
                 print("   [Warn] Empty response from API")
                 time.sleep(0.5 * attempt)
                 continue
@@ -156,24 +164,32 @@ def get_response(system_content: str, contents: list) -> str:
             # Validate
             is_valid, reason = validate(content)
             if is_valid:
+                logger.info(f"Response validated OK - {len(content)} chars")
                 return content
             
+            logger.warning(f"Validation failed: {reason} - Attempt {attempt}/{MAX_RETRIES}")
             print(f"   [Warn] Validation failed: {reason}, retrying...")
             time.sleep(0.3 * attempt)
             
         except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else 'unknown'
+            logger.error(f"HTTP error {status} - Attempt {attempt}/{MAX_RETRIES} - Model: {MODEL}")
             print(f"   [Warn] HTTP Error: {e}")
             if e.response is not None:
                 try:
                     error_detail = e.response.json()
-                    print(f"   [Detail] {error_detail.get('error', {}).get('message', 'Unknown error')}")
+                    detail_msg = error_detail.get('error', {}).get('message', 'Unknown error')
+                    logger.error(f"API detail: {detail_msg}")
+                    print(f"   [Detail] {detail_msg}")
                 except:
                     pass
             time.sleep(0.5 * attempt)
         except Exception as e:
+            logger.error(f"Request error - {type(e).__name__}: {e} - Attempt {attempt}/{MAX_RETRIES}", exc_info=True)
             print(f"   [Warn] {type(e).__name__}: {e}")
             time.sleep(0.5 * attempt)
     
+    logger.error(f"All {MAX_RETRIES} retries exhausted - Returning fallback")
     return FALLBACK_MESSAGE
 
 
@@ -193,6 +209,7 @@ def render(packet: str) -> str:
     if cached:
         return cached
     
+    logger.debug("Cache miss - Making API call")
     # Make API call
     response = get_response(system_content, contents)
     

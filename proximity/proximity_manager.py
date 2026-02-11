@@ -10,6 +10,9 @@ import os
 import sys
 import numpy as np
 
+from logger_config import get_logger
+logger = get_logger(__name__)
+
 # Get the base directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(SCRIPT_DIR)
@@ -92,8 +95,10 @@ class ProximityManager:
                         os_module.dup2(old_stderr_fd, 2)
                         os_module.close(old_stderr_fd)
             else:
+                logger.warning(f"Embedding model not found at {MODEL_PATH}")
                 print(f"[ProximityManager] Warning: Model not found at {MODEL_PATH}")
         except Exception as e:
+            logger.error(f"Failed to load proximity model: {e}")
             print(f"[ProximityManager] Warning: Failed to load model: {e}")
     
     def _embed(self, text: str) -> np.ndarray:
@@ -171,6 +176,7 @@ class ProximityManager:
             
             elif detected_state != self.current_state:
                 self.current_state = detected_state
+                logger.info(f"Proximity state change: {self.current_state} (confidence: {confidence:.3f})")
                 return self.current_state, True
         
         # No change

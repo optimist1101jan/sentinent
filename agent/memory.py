@@ -5,6 +5,9 @@ import os
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(SCRIPT_DIR, "brain.db")
 
+from logger_config import get_logger
+logger = get_logger(__name__)
+
 class MemoryStore:
     def __init__(self):
         self.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -100,6 +103,7 @@ class MemoryStore:
                 (fts_query, limit)
             )
             results = [row[0] for row in cursor.fetchall()]
+            logger.debug(f"Episodic search - Query: \"{query[:50]}\" - Found {len(results)} results")
             return results
         except sqlite3.OperationalError:
             # Fallback if query syntax is invalid for FTS5
@@ -110,6 +114,7 @@ class MemoryStore:
         cursor = self.conn.cursor()
         cursor.execute("DELETE FROM episodes")
         self.conn.commit()
+        logger.warning("Memory wiped - All episodes deleted from brain.db")
         print("Brain wiped clean.")
 
     def add_episode(self, content: str, source: str = "runtime_ingestion"):
@@ -130,6 +135,7 @@ class MemoryStore:
             (content, source)
         )
         self.conn.commit()
+        logger.info(f"Episode added to brain.db - rowid: {cursor.lastrowid} - Source: {source}")
         return cursor.lastrowid
 
     def close(self):

@@ -4,6 +4,11 @@ import sys
 # Get the directory where this script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# Initialize logging FIRST — before any other imports that log on load
+from logger_config import get_logger, log_session_start, log_session_end
+log_session_start()
+logger = get_logger(__name__)
+
 from agent.temporal import TimeManager
 from pipeline.packet_builder import PacketBuilder
 from streaming.renderer_streaming import render_streaming, FALLBACK_MESSAGE
@@ -38,6 +43,7 @@ def main():
     # Initialize tools once
     timer = TimeManager()
     builder = PacketBuilder()
+    logger.info("System initialized - TimeManager + PacketBuilder ready")
     
     # Stage 1: Session turn counter (T = 0)
     # Tracks turns within the current 5-turn cycle
@@ -53,17 +59,21 @@ def main():
             
             # Check for exit command BEFORE logging
             if user_input.strip().lower() in ["cls", "quit", "exit"]:
+                logger.info("Session ended by user (exit command)")
+                log_session_end()
                 print("See you next time...")
                 break
             
             # === GUARD: Empty Input ===
             if not user_input.strip():
+                logger.debug("Empty input ignored")
                 print("   >> [Traffic Control] Empty input ignored.")
                 continue
 
             # === TRAFFIC CONTROL: Hold user input in temporary memory ===
             # Do NOT log yet - wait for AI to successfully respond
             pending_user_message = user_input
+            logger.info(f"Request received - HOLD: \"{user_input[:80]}{'...' if len(user_input) > 80 else ''}\"")
 
             # 2. Time Subsystem
             timer.load_and_update()
@@ -71,6 +81,7 @@ def main():
 
             # 3. Build Packet
             packet_content = builder.build(pending_user_message, time_block)
+            logger.debug(f"Packet built - {len(packet_content)} chars")
 
             # 4. Output to File
             output_path = os.path.join(SCRIPT_DIR, "pipeline", "packet.md")
@@ -79,8 +90,10 @@ def main():
 
             # 5. Render (Stream to LLM with typewriter effect)
             print(f"\nAI : ", end='', flush=True)
+            logger.info("API call started - Streaming to Gemini")
             assistant_response = render_streaming(packet_content, char_delay=0.1)
             print()  # Newline after streaming completes
+            logger.info(f"Response received - {len(assistant_response)} chars")
             
             # === TRAFFIC CONTROL: Conditional Commit ===
             # Only log if the response is valid (not fallback, not error)
@@ -91,10 +104,12 @@ def main():
                 
                 # Stage 1: Increment turn counter and check for 5-turn milestone
                 session_turn_count += 1
+                logger.info(f"COMMIT - Turn {session_turn_count}/{CYCLE_SIZE} (cycle #{cycle_number})")
                 
                 if session_turn_count >= CYCLE_SIZE:
                     # 5-turn milestone reached - trigger Stage 2 & 3
                     print("\n   [SUMMARIZER PIPELINE TRIGGERED - 5 turns reached]")
+                    logger.info(f"Summarizer pipeline triggered - Cycle #{cycle_number}")
                     raw_conversation = buffer_to_raw_text()
                     
                     # Run the full summarization + indexing pipeline
@@ -102,6 +117,7 @@ def main():
                         raw_conversation, 
                         cycle_num=cycle_number
                     )
+                    logger.info(f"Compressed memory: \"{compressed_memory[:120]}\"")
                     
                     print(f"   >> Compressed Memory: {compressed_memory}")
                     
@@ -109,18 +125,23 @@ def main():
                     buffer_clear()
                     session_turn_count = 0
                     cycle_number += 1
+                    logger.debug(f"Buffer cleared - Starting cycle #{cycle_number}")
                     print(f"   >> Buffer cleared. Starting new cycle #{cycle_number}.\n")
             else:
                 # AI response was invalid (fallback or error)
                 # DISCARD: Do not save anything to logs
+                logger.warning(f"DISCARD - Invalid response: \"{assistant_response[:80]}\"")
                 print(f"   >> [Traffic Control] AI response invalid. Nothing saved to history.")
                 print(f"   >> You can try again without polluting the conversation history.")
 
         except KeyboardInterrupt:
             # This catches 'Ctrl+C' so it exits cleanly
+            logger.info("Session ended by user (Ctrl+C)")
+            log_session_end()
             print("\n\nSYSTEM HALTED.")
             sys.exit()
         except Exception as e:
+            logger.error(f"Unhandled error: {e}", exc_info=True)
             print(f"\nERROR: {e}")
 
 if __name__ == "__main__":

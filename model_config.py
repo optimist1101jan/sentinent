@@ -6,6 +6,9 @@ Using Google Gemini API
 import json
 import requests
 
+from logger_config import get_logger
+logger = get_logger(__name__)
+
 # =============================================================================
 # MODEL SELECTION - Google Gemini / Gemma Models
 # =============================================================================
@@ -67,6 +70,7 @@ def load_api_key():
                 return content.split('=', 1)[1].strip()
             return content
     except Exception as e:
+        logger.error(f"Failed to load API key from {API_KEY_PATH}: {e}")
         print(f"Error loading API key: {e}")
         return None
 
@@ -141,6 +145,7 @@ def generate_response(messages, temperature=None, max_tokens=None):
                 return parts[0].get('text', '')
         return None
     except Exception as e:
+        logger.error(f"generate_response failed - {type(e).__name__}: {e}", exc_info=True)
         print(f"Error generating response: {e}")
         return None
 

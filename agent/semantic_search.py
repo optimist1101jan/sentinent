@@ -13,6 +13,9 @@ import pickle
 import sqlite3
 import numpy as np
 
+from logger_config import get_logger
+logger = get_logger(__name__)
+
 # Pre-load llama_cpp with suppressed logging to avoid C++ warnings
 _Llama = None
 _log_callback_ref = None  # Keep reference to prevent GC
@@ -66,14 +69,16 @@ class SemanticSearch:
                 )
                 #print(f"[SemanticSearch] Loaded nomic-embed-text-v1.5.Q8_0.gguf")
             else:
+                logger.warning(f"Embedding model not found at {self.model_path}")
                 print(f"[SemanticSearch] Warning: Model not found at {self.model_path}")
                 self.encoder = None
         except ImportError as e:
+            logger.warning(f"llama-cpp-python not installed: {e}")
             print(f"[SemanticSearch] Warning: llama-cpp-python not installed ({e}). Using fallback.")
             self.encoder = None
     
     def _embed(self, texts):
-        """Encode texts to vectors using llama-cpp-python."""
+        """Encode texts to vectors using llama-cpp-python. Returns None if model unavailable."""
         if self.encoder:
             # llama-cpp creates embeddings - returns list of floats for single text
             embeddings = []
@@ -83,8 +88,9 @@ class SemanticSearch:
                 embeddings.append(embedding)
             return np.array(embeddings, dtype='float32')
         else:
-            # Fallback: random vectors (for testing without model)
-            return np.random.randn(len(texts), self.dimension).astype('float32')
+            # No model available — return None to prevent noise in packet
+            logger.warning("Embedding skipped - No model loaded, returning None to prevent noise")
+            return None
     
     def _load_or_build_index(self):
         """Load existing FAISS index or build from scratch."""
@@ -155,6 +161,7 @@ class SemanticSearch:
     
     def build_index(self):
         """Build FAISS index from all sources."""
+        logger.info("Building semantic index from scratch")
         print("[SemanticSearch] Building index...")
         self.chunks = self._collect_all_chunks()
         
@@ -164,6 +171,12 @@ class SemanticSearch:
         
         texts = [chunk[1] for chunk in self.chunks]
         vectors = self._embed(texts)
+        
+        if vectors is None:
+            logger.warning("Index build skipped - No embedding model available")
+            print("[SemanticSearch] Warning: Cannot build index without embedding model")
+            self.chunks = []
+            return
         
         # Normalize for cosine similarity
         vectors = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
@@ -186,6 +199,7 @@ class SemanticSearch:
         with open(CHUNKS_PATH, 'w', encoding='utf-8') as f:
             json.dump(self.chunks, f, ensure_ascii=False)
         
+        logger.info(f"Semantic index built - {len(self.chunks)} chunks indexed")
         print(f"[SemanticSearch] Built index with {len(self.chunks)} chunks")
     
     def search(self, query, k=5):
@@ -193,7 +207,7 @@ class SemanticSearch:
         Semantic search: find top-k most similar chunks.
         Returns list of (source, text, score) tuples.
         """
-        if not self.chunks:
+        if not self.chunks or self.encoder is None:
             return []
         
         # Embed query
@@ -210,6 +224,7 @@ class SemanticSearch:
                 if idx >= 0 and idx < len(self.chunks):
                     source, text = self.chunks[idx]
                     results.append((source, text, float(score)))
+            logger.debug(f"Semantic search complete - Query: \"{query[:50]}\" - Found {len(results)} results")
             return results
         except ImportError:
             # Fallback: brute force cosine similarity
@@ -251,9 +266,14 @@ def add_chunk_to_index(text: str, source: str = "summarizer"):
     """
     search_instance = get_search()
     
-    # 1. Generate embedding using all-MiniLM-L6-v2
+    # 1. Generate embedding
     print(f"[SemanticSearch] Generating embedding for new chunk...")
     vector = search_instance._embed([text])
+    
+    if vector is None:
+        logger.warning(f"Chunk not indexed - No embedding model available")
+        print("[SemanticSearch] Warning: Cannot index chunk without embedding model")
+        return False
     vector = vector / np.linalg.norm(vector, axis=1, keepdims=True)
     vector = vector.astype('float32')
     
@@ -272,6 +292,7 @@ def add_chunk_to_index(text: str, source: str = "summarizer"):
             search_instance.index = faiss.IndexFlatIP(search_instance.dimension)
         search_instance.index.add(vector)
         faiss.write_index(search_instance.index, INDEX_PATH)
+        logger.info(f"Chunk added to FAISS index - Total: {len(search_instance.chunks)} - Source: {source}")
         print(f"[SemanticSearch] Added chunk. Total: {len(search_instance.chunks)}")
     except ImportError:
         # Fallback: rebuild numpy index

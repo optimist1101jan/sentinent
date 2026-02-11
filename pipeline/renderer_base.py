@@ -27,6 +27,9 @@ from model_config import (
     FALLBACK_MESSAGE,
 )
 
+from logger_config import get_logger
+logger = get_logger(__name__)
+
 
 # =============================================================================
 # API KEY LOADING
@@ -49,6 +52,10 @@ def load_api_key():
 
 # Module-level API key (loaded once)
 API_KEY = load_api_key()
+if API_KEY:
+    logger.info("API key loaded successfully")
+else:
+    logger.error("API key NOT found - All API calls will fail")
 
 
 # =============================================================================
