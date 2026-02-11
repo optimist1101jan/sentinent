@@ -10,6 +10,9 @@ dist/
 build/
 *.egg
 
+# Study and Aim Folder
+Testing/
+
 # Large model files
 *.gguf
 
