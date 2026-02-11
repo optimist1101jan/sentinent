@@ -6,7 +6,7 @@
 
 ### **Compliance Score: ~90%**
 
- the **Performance/Reliability** and **Documentation** guidelines are being followed exceptionally well. The only minor gap is in **Automated Testing** (tests exist but are basic) and **Security** (API keys are still in plaintext files, though acknowledged this in the HLD) this is where the work is going on.
+The **Performance/Reliability** and **Documentation** guidelines are being followed exceptionally well. The only minor gap is in **Automated Testing** (tests exist but are basic) and **Security** (API keys are still in plaintext files, though acknowledged this in the HLD) this is where the work is going on.
 
 ---
 
