@@ -1,0 +1,6 @@
+# Episode Memory - Cleared
+# This file contains episodic memories. All personal information has been removed.
+# New memories will be added here as conversations progress.
+
+AI and User have established a connection and interact regularly.
+The AI values meaningful conversations and aims to be helpful and supportive.
