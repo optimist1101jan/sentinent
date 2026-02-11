@@ -3,7 +3,7 @@
 A Streamlit-based chatbot with memory architecture featuring persona, short-term and long-term memory using FAISS vector search.
 
 ## 🏗️ Project Structure
-
+  ```
 New folder/
 ├── app.py                      # Main Streamlit application
 ├── .env                        # Environment variables (API keys)
@@ -35,7 +35,7 @@ New folder/
 └── utils/
     ├── session_id.py          # Session management
     └── ui_helpers.py          # Streamlit UI utilities
-
+  ```
 
 ## 🚀 Quick Start
 
